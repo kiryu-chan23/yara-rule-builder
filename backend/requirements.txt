@@ -1,0 +1,32 @@
+# ============================================================
+# TASK B1 — Pin the backend dependencies
+# ============================================================
+# Write the pinned dependency list for the Flask API.
+# You need, at minimum:
+#   - flask            (the API)
+#   - yara-x           (rule compilation + scanning; import name is `yara_x`)
+#   - flask-cors       (dev only: Vite runs on :5173, Flask on :5000)
+#   - pytest           (for TASK B6)
+#
+# Pin exact versions (pkg==1.2.3), not ranges — this file is what
+# the Docker build installs, so it must be reproducible.
+#
+# DONE WHEN:
+#   python -m venv .venv && .venv\Scripts\activate
+#   pip install -r requirements.txt
+#   python -c "import yara_x; print(yara_x.__file__)"   # no error
+#
+# NOTE: yara-x is the Rust rewrite of YARA. Before writing any
+# compiler code, open a REPL and poke at it for five minutes:
+#   >>> import yara_x
+#   >>> yara_x.compile('rule a { condition: true }')
+#   >>> try: yara_x.compile('rule a {')
+#   ... except Exception as e: print(type(e), dir(e), repr(e))
+# Find out what the exception actually carries. Do NOT assume it
+# has .line / .column attributes — check. TASK B3 depends on
+# what you find here.
+flask==3.1.3
+flask-cors==6.0.5
+yara-x==1.19.0
+pytest==9.1.1
+

@@ -1,0 +1,3 @@
+# TASK D1a — keep the build context small and secret-free.
+# List at least: .git, .venv, __pycache__, *.pyc, node_modules,
+# frontend/dist, .env, .pytest_cache, *.md

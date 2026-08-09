@@ -1,0 +1,35 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+*.local
+
+# Secrets — never commit these
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+
+# Scratch harnesses from the review process
+_check_*.py
+_review_*.py
+
+# NEVER commit malware samples or test binaries. If you add sample-based
+# tests later, commit the hashes and the rules, not the files.
+*.exe
+*.dll
+*.bin
+samples/

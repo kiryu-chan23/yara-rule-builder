@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Palette
+   ============================================================
+   Tailwind v4 reads @theme and generates utilities from it, so
+   --color-espresso becomes bg-espresso / text-espresso / border-espresso.
+   One place to change a colour, everywhere updates.
+
+   The six brand colours are exact. The three "-lit" variants are derived
+   for text on the dark background: the source colours are mid-tone and
+   sit at roughly 3:1 against espresso, which fails WCAG AA for body text.
+   Brand colours are used for fills, borders and markers; the lit variants
+   for anything you have to read.
+*/
+@theme {
+  /* Brand */
+  --color-blush: #f9edf0;
+  --color-champagne: #e6c8b7;
+  --color-cognac: #c3955b;
+  --color-amber: #ba6a36;
+  --color-emerald: #1c3934;
+  --color-espresso: #261311;
+
+  /* Derived, for legible text on espresso */
+  --color-amber-lit: #e08b52;
+  --color-cognac-lit: #dcb37e;
+  --color-mint: #6fbfa5;
+
+  /* Surfaces */
+  --color-surface: #1c0e0c;   /* editor pane, one step darker than espresso */
+  --color-panel: #1c3934;     /* emerald, used as the panel/header surface */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-espresso);
+  color: var(--color-blush);
+}
