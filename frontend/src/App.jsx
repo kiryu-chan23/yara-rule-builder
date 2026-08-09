@@ -139,7 +139,10 @@ export default function App() {
     <main className="flex flex-col md:flex-row h-screen w-screen bg-espresso text-blush overflow-hidden font-sans">
       {/* Left Column: Code Window */}
       <section className="flex flex-col flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-cognac/25">
-        <header className="px-4 py-3 bg-emerald border-b border-cognac/25">
+        {/* Both headers share min-h so the emerald bands line up across
+            the split, despite one having two lines of text and one having
+            one. justify-center keeps each block vertically centred. */}
+        <header className="flex flex-col justify-center min-h-16 px-4 py-3 bg-emerald border-b border-cognac/25">
           <h1 className="text-lg font-semibold tracking-tight text-blush">
             YARA Rule Builder
           </h1>
@@ -162,7 +165,7 @@ export default function App() {
 
       {/* Right Column: Information Panel */}
       <section className="flex flex-col w-full md:w-96 bg-espresso h-1/2 md:h-full overflow-hidden">
-        <header className="px-4 py-3 bg-emerald border-b border-cognac/25">
+        <header className="flex flex-col justify-center min-h-16 px-4 py-3 bg-emerald border-b border-cognac/25">
           <h2 className="text-sm font-semibold tracking-wide text-champagne uppercase">
             Compiler Output
           </h2>

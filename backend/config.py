@@ -37,6 +37,17 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    """
+    bool("false") is True in Python — any non-empty string is truthy — so
+    compare against known values instead of casting.
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Config:
     # 64KB cap to stop oversized uploads tying up web workers.
@@ -52,6 +63,17 @@ class Config:
     DEBUG: bool = False
     CORS_ORIGINS: list = ()
 
+    # H2 — per-IP cap on /api/compile. Generous for a human typing,
+    # useless for a script.
+    RATE_LIMIT: str = "30/minute"
+
+    # H2 — only enable behind a proxy that sets X-Forwarded-For itself
+    # (Render does). If the app is ever exposed directly, this must stay
+    # False: a client can forge X-Forwarded-For and sidestep the limiter
+    # entirely, which is worse than having no limiter, because it looks
+    # like protection.
+    TRUST_PROXY: bool = False
+
 
 def load_config() -> Config:
     is_dev = os.environ.get("FLASK_ENV", "production") == "development"
@@ -64,6 +86,8 @@ def load_config() -> Config:
         STATIC_DIR=os.environ.get("STATIC_DIR", DEFAULT_STATIC_DIR),
         DEBUG=is_dev,
         CORS_ORIGINS=[o.strip() for o in origins.split(",") if o.strip()],
+        RATE_LIMIT=os.environ.get("RATE_LIMIT", "30/minute"),
+        TRUST_PROXY=_env_bool("TRUST_PROXY", False),
     )
 
 

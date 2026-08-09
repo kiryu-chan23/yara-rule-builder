@@ -36,8 +36,9 @@
 #   Same call with "rule a {" -> 200, {"ok":false,"errors":[{"line":1,...}]}
 #   curl -X POST localhost:5000/api/compile -d "not json" -> 400, no traceback
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import CONFIG
+from extensions import limiter
 from services.compiler import compile_rule
 
 # Status code rule: 200 means the compile pipeline ran completely (even if the rule is invalid).
@@ -46,11 +47,22 @@ from services.compiler import compile_rule
 rules_bp = Blueprint("rules_bp", __name__, url_prefix="/api")
 
 @rules_bp.route("/health", methods=["GET"])
+@limiter.exempt
 def health():
-    """Health check endpoint for Docker and monitoring tools."""
+    """
+    Health check for Docker and Render.
+
+    Exempt from rate limiting on purpose: Render polls this every few
+    seconds from its own infrastructure, and a 429 here would be read as
+    the service being unhealthy and trigger a restart loop.
+    """
     return jsonify({"status": "ok"}), 200
 
 @rules_bp.route("/compile", methods=["POST"])
+# H2 — the only expensive endpoint, so the only one that needs a cap.
+# Limit is read from config at request time via a lambda, so tests and
+# deployments can change it without editing this decorator.
+@limiter.limit(lambda: current_app.config.get("RATE_LIMIT", "30/minute"))
 def compile_endpoint():
     """Validates input payload size/type and passes YARA rule strings to the compiler."""
     # Handle non-JSON, empty, or malformed request payloads safely

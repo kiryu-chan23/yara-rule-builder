@@ -34,9 +34,11 @@
 #   GET /some/spa/route           -> index.html (once frontend is built)
 
 import os
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify, request
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import CONFIG
+from extensions import limiter
 from api.rules import rules_bp
 
 def create_app(test_config=None) -> Flask:
@@ -52,6 +54,21 @@ def create_app(test_config=None) -> Flask:
     # POST is absorbed into memory before anything checks it. Headroom covers
     # JSON quoting/escaping so a legitimate max-size rule still gets through.
     app.config["MAX_CONTENT_LENGTH"] = config.MAX_SOURCE_BYTES + 4096
+
+    # H2 — trust X-Forwarded-For, but ONLY when we know a proxy sets it.
+    # Render terminates TLS and forwards, so remote_addr is Render's proxy
+    # and every visitor would share one rate-limit bucket. ProxyFix reads
+    # the real client IP from the header instead.
+    #
+    # Off by default and gated on config: if this app is ever run directly
+    # on a public port with ProxyFix enabled, a client can forge
+    # X-Forwarded-For and get a fresh rate-limit bucket per request. That
+    # is worse than no limiter, because it looks like protection.
+    if config.TRUST_PROXY:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+    # H2 — the limiter itself. Individual routes opt in; see api/rules.py.
+    limiter.init_app(app)
 
     # 2. Register API endpoints
     app.register_blueprint(rules_bp)
@@ -86,8 +103,68 @@ def create_app(test_config=None) -> Flask:
         message = getattr(e, "description", "Internal Server Error")
         return jsonify({"error": message, "status": code}), code
 
-    for error_code in (400, 404, 405, 413, 500):
+    # 429 included so a rate-limited client gets JSON, not an HTML page.
+    for error_code in (400, 404, 405, 413, 429, 500):
         app.register_error_handler(error_code, make_json_error)
+
+    # ============================================================
+    # H3 — security headers
+    # ============================================================
+    @app.after_request
+    def set_security_headers(response):
+        # Stop the browser guessing content types. Without it, a response
+        # the browser decides "looks like HTML" can be rendered as HTML.
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        # Don't leak full URLs to third parties on outbound navigation.
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # No framing. Revisit when A1 (ads in a cross-origin iframe) lands:
+        # that iframes THEM into US, which this does not block. This stops
+        # someone framing us for clickjacking.
+        response.headers["X-Frame-Options"] = "DENY"
+
+        # Features this app has no reason to touch.
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+        )
+
+        # CSP.
+        #
+        # style-src NEEDS 'unsafe-inline' and here is why: CodeMirror 6
+        # injects its theme as <style> elements at runtime (EditorView.theme
+        # generates them), and the lint gutter does the same. With a strict
+        # style-src the editor renders unstyled — no dark theme, no gutter
+        # colours, no error highlighting. The alternatives are a per-request
+        # nonce threaded through the SPA bootstrap, or hashing every
+        # generated style. Neither is worth it while the app has no
+        # user-generated HTML anywhere: error text goes into the DOM as
+        # text via React, never as markup.
+        #
+        # script-src stays strict. That is the directive that matters for
+        # XSS, and nothing here needs inline script.
+        response.headers["Content-Security-Policy"] = "; ".join([
+            "default-src 'self'",
+            "script-src 'self'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data:",
+            "font-src 'self'",
+            "connect-src 'self'",
+            "object-src 'none'",
+            "base-uri 'none'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+        ])
+
+        # HSTS only when the request arrived over HTTPS — setting it on a
+        # plain-HTTP dev response would pin localhost to HTTPS in your
+        # browser and be a nuisance to undo.
+        if request.is_secure:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+
+        return response
 
     return app
 
