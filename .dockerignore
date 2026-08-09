@@ -1,3 +1,33 @@
-# TASK D1a — keep the build context small and secret-free.
-# List at least: .git, .venv, __pycache__, *.pyc, node_modules,
-# frontend/dist, .env, .pytest_cache, *.md
+# Keep the build context small and secret-free. Everything listed here is
+# either rebuilt inside the image or must never reach it.
+
+.git
+.gitignore
+.dockerignore
+
+# Rebuilt in the image
+node_modules
+frontend/node_modules
+frontend/dist
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+
+# Never
+.env
+.env.*
+samples/
+*.exe
+*.dll
+*.bin
+
+# Not needed at runtime
+*.md
+docker/
+.vscode
+.idea
+_check_*.py
+_review_*.py
