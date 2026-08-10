@@ -85,12 +85,21 @@ const errorLineField = StateField.define({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// Palette: amber #ba6a36 for errors, cognac #c3955b for warnings.
-// Kept as literals rather than CSS vars because CodeMirror injects these
-// into its own stylesheet, outside Tailwind's @theme scope.
+// One Dark Pro: error #e06c75, warning #e5c07b. Literals rather than CSS
+// vars because CodeMirror injects these into its own stylesheet, outside
+// Tailwind's @theme scope. Keep in sync with index.css.
+//
+// A left border as well as a tint: on a dark background a 10% wash is
+// easy to miss, and the border gives the line a definite edge.
 const highlightTheme = EditorView.theme({
-  '.cm-yara-error-line': { backgroundColor: 'rgba(186, 106, 54, 0.16)' },
-  '.cm-yara-warning-line': { backgroundColor: 'rgba(195, 149, 91, 0.10)' },
+  '.cm-yara-error-line': {
+    backgroundColor: 'rgba(224, 108, 117, 0.13)',
+    boxShadow: 'inset 2px 0 0 #e06c75',
+  },
+  '.cm-yara-warning-line': {
+    backgroundColor: 'rgba(229, 192, 123, 0.11)',
+    boxShadow: 'inset 2px 0 0 #e5c07b',
+  },
 });
 
 export function errorLineHighlight() {

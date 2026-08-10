@@ -45,48 +45,99 @@ import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { setDiagnostics, lintGutter } from '@codemirror/lint';
+import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
+import { bracketMatching, indentOnInput } from '@codemirror/language';
 import { errorLineHighlight, setErrorLines } from '../editor/errorGutter';
+import { yara } from '../editor/yaraLanguage';
+import { yaraCompletions } from '../editor/yaraCompletions';
 
-// CodeMirror renders into its own stylesheet and ignores Tailwind classes,
+// CodeMirror injects its own stylesheet and cannot read Tailwind classes,
 // so the palette is repeated here as literals. Keep in sync with @theme
-// in index.css.
+// in index.css — that file is the source of truth.
 const PALETTE = {
-  blush: '#f9edf0',
-  champagne: '#e6c8b7',
-  cognac: '#c3955b',
-  amber: '#ba6a36',
-  emerald: '#1c3934',
-  surface: '#1c0e0c',
+  surface: '#282c34',
+  panel: '#21252b',
+  line: '#3e4451',
+  fg: '#abb2bf',
+  fgMuted: '#7f8796',
+  accent: '#61afef',
+  error: '#e06c75',
+  warn: '#e5c07b',
 };
 
 const yaraTheme = EditorView.theme(
   {
     '&': {
       backgroundColor: PALETTE.surface,
-      color: PALETTE.blush,
+      color: PALETTE.fg,
       height: '100%',
     },
     '.cm-content': {
-      caretColor: PALETTE.cognac,
+      caretColor: PALETTE.accent,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
     },
-    '.cm-cursor, .cm-dropCursor': { borderLeftColor: PALETTE.cognac },
+    '.cm-cursor, .cm-dropCursor': { borderLeftColor: PALETTE.accent },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection':
-      { backgroundColor: 'rgba(195, 149, 91, 0.25)' },
+      { backgroundColor: '#3e4451' },
     '.cm-gutters': {
       backgroundColor: PALETTE.surface,
-      color: 'rgba(230, 200, 183, 0.45)',
+      color: '#4b5263',
       border: 'none',
-      borderRight: '1px solid rgba(195, 149, 91, 0.20)',
+      borderRight: `1px solid ${PALETTE.line}`,
     },
-    '.cm-activeLine': { backgroundColor: 'rgba(28, 57, 52, 0.35)' },
+    '.cm-activeLine': { backgroundColor: '#2c313a' },
     '.cm-activeLineGutter': {
-      backgroundColor: 'rgba(28, 57, 52, 0.35)',
-      color: PALETTE.champagne,
+      backgroundColor: '#2c313a',
+      color: PALETTE.fg,
     },
-    // The lint gutter marker keeps @codemirror/lint's default red dot.
-    // It's the one place a non-palette colour earns its keep: red is the
-    // universal "error here" signal and the marker is 8px across.
+
+    // Lint tooltip — the hover message on a gutter marker. Unstyled it
+    // renders as a pale system box that looks pasted on over a dark
+    // editor, which is why the feature reads as missing.
+    '.cm-tooltip.cm-tooltip-lint': {
+      backgroundColor: PALETTE.panel,
+      border: `1px solid ${PALETTE.line}`,
+      borderRadius: '6px',
+      color: PALETTE.fg,
+      fontFamily: 'inherit',
+      fontSize: '12.5px',
+      padding: '2px 0',
+    },
+    '.cm-tooltip .cm-diagnostic': { padding: '4px 10px', borderLeft: 'none' },
+    '.cm-tooltip .cm-diagnostic-error': { color: PALETTE.error },
+    '.cm-tooltip .cm-diagnostic-warning': { color: PALETTE.warn },
+
+    // Make the gutter marker a click/hover target people notice.
+    '.cm-lint-marker': { cursor: 'pointer' },
+
+    // Autocomplete popup. Unstyled it inherits the browser default and
+    // renders as a white list over a dark editor.
+    '.cm-tooltip-autocomplete': {
+      backgroundColor: PALETTE.panel,
+      border: `1px solid ${PALETTE.line}`,
+      borderRadius: '6px',
+      fontFamily: 'inherit',
+    },
+    '.cm-tooltip-autocomplete ul li': { padding: '3px 8px' },
+    '.cm-tooltip-autocomplete ul li[aria-selected]': {
+      backgroundColor: '#2c313a',
+      color: PALETTE.fg,
+    },
+    '.cm-completionLabel': { color: PALETTE.fg },
+    '.cm-completionDetail': { color: PALETTE.fgMuted, fontStyle: 'normal' },
+    '.cm-completionInfo': {
+      backgroundColor: PALETTE.panel,
+      border: `1px solid ${PALETTE.line}`,
+      borderRadius: '6px',
+      color: PALETTE.fg,
+      padding: '6px 10px',
+      maxWidth: '260px',
+      lineHeight: '1.5',
+    },
+    '.cm-matchingBracket, &.cm-focused .cm-matchingBracket': {
+      backgroundColor: '#3e4451',
+      outline: 'none',
+    },
   },
   { dark: true }
 );
@@ -150,6 +201,18 @@ export default function YaraEditor({ value, onChange, diagnostics = [], ref }) {
       doc: value || '',
       extensions: [
         yaraTheme,
+        // Language first: highlighting, comment tokens, bracket config.
+        yara(),
+        autocompletion({
+          override: [yaraCompletions],
+          // Don't fire on every character — YARA has short tokens and a
+          // popup on `$` or `a` is noise. Two characters is the balance.
+          activateOnTypingDelay: 120,
+          icons: true,
+        }),
+        closeBrackets(),
+        bracketMatching(),
+        indentOnInput(),
         lineNumbers(),
         highlightActiveLine(),
         // lintGutter draws the markers in the gutter. setDiagnostics alone
@@ -159,7 +222,15 @@ export default function YaraEditor({ value, onChange, diagnostics = [], ref }) {
         // Ours: the coloured line background. lint does the marker.
         errorLineHighlight(),
         history(),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        // Order matters: completion and bracket keymaps must come before
+        // defaultKeymap so Enter/Tab accept a completion instead of
+        // inserting a newline while the popup is open.
+        keymap.of([
+          ...closeBracketsKeymap,
+          ...completionKeymap,
+          ...defaultKeymap,
+          ...historyKeymap,
+        ]),
         updateListener,
       ],
     });

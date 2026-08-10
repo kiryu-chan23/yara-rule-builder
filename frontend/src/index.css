@@ -1,35 +1,50 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Palette
+   Theme — One Dark Pro
    ============================================================
-   Tailwind v4 reads @theme and generates utilities from it, so
-   --color-espresso becomes bg-espresso / text-espresso / border-espresso.
-   One place to change a colour, everywhere updates.
+   Tailwind v4 generates utilities from @theme, so --color-surface
+   becomes bg-surface / text-surface / border-surface. One place to
+   change a colour; everything follows.
 
-   The six brand colours are exact. The three "-lit" variants are derived
-   for text on the dark background: the source colours are mid-tone and
-   sit at roughly 3:1 against espresso, which fails WCAG AA for body text.
-   Brand colours are used for fills, borders and markers; the lit variants
-   for anything you have to read.
+   Replaces the earlier warm palette. That palette had no red, so
+   errors and warnings were adjacent browns and severity was hard to
+   read at a glance — the reason the row labels spell out ERROR / WARN.
+   Those labels stay: colour alone should never be the only signal.
+
+   Contrast against --color-surface (#282c34):
+     fg      #abb2bf  ~7.0:1   body text, passes AA
+     warn    #e5c07b  ~8.2:1   passes AA
+     error   #e06c75  ~4.6:1   passes AA for UI text at 14px+
+     ok      #98c379  ~7.4:1   passes AA
+     muted   #7f8796  ~4.6:1   metadata only, never body text
 */
 @theme {
-  /* Brand */
-  --color-blush: #f9edf0;
-  --color-champagne: #e6c8b7;
-  --color-cognac: #c3955b;
-  --color-amber: #ba6a36;
-  --color-emerald: #1c3934;
-  --color-espresso: #261311;
-
-  /* Derived, for legible text on espresso */
-  --color-amber-lit: #e08b52;
-  --color-cognac-lit: #dcb37e;
-  --color-mint: #6fbfa5;
-
   /* Surfaces */
-  --color-surface: #1c0e0c;   /* editor pane, one step darker than espresso */
-  --color-panel: #1c3934;     /* emerald, used as the panel/header surface */
+  --color-surface: #282c34;   /* editor pane */
+  --color-panel: #21252b;     /* headers, side panel */
+  --color-sunken: #1e2227;    /* status bar */
+  --color-line: #3e4451;      /* borders, dividers */
+  --color-raised: #2c313a;    /* buttons, inputs */
+
+  /* Text */
+  --color-fg: #abb2bf;
+  --color-fg-bright: #d7dae0;
+  --color-fg-muted: #7f8796;
+
+  /* Semantic */
+  --color-error: #e06c75;
+  --color-warn: #e5c07b;
+  --color-ok: #98c379;
+  --color-accent: #61afef;
+
+  /* Syntax, used by the CodeMirror theme and by Phase 2 (F7) */
+  --color-syn-keyword: #c678dd;
+  --color-syn-string: #98c379;
+  --color-syn-number: #d19a66;
+  --color-syn-variable: #e06c75;
+  --color-syn-operator: #56b6c2;
+  --color-syn-comment: #5c6370;
 }
 
 html,
@@ -39,6 +54,6 @@ body,
 }
 
 body {
-  background-color: var(--color-espresso);
-  color: var(--color-blush);
+  background-color: var(--color-surface);
+  color: var(--color-fg);
 }

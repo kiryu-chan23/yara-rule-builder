@@ -49,15 +49,20 @@ export default function CompileStatus({ state, result, onErrorClick }) {
         // message (repeated patterns), and duplicate keys drop rows.
         key={`${type}-${index}-${item.line}`}
         className={[
-          'flex gap-2 px-3 py-1.5 text-sm border-l-2',
-          // The palette has no red, so severity is carried by hue weight
-          // (amber vs cognac) AND by the explicit label below — colour
-          // alone would not be enough to tell them apart.
+          'flex gap-2 px-3 py-2 text-sm border-l-2 transition-colors',
+          // Red and amber now carry severity, but the word label below
+          // stays: colour must never be the only signal.
           isError
-            ? 'border-amber bg-amber/10 text-amber-lit'
-            : 'border-cognac bg-cognac/5 text-cognac-lit',
-          jumpable ? 'cursor-pointer hover:bg-blush/5' : '',
+            ? 'border-error bg-error/10'
+            : 'border-warn bg-warn/10',
+          // Discoverability: the jump-to-line behaviour already existed
+          // but nothing said so. Cursor + hover + focus ring make it
+          // look like the control it is.
+          jumpable
+            ? 'cursor-pointer hover:bg-fg/5 focus:outline-none focus:ring-1 focus:ring-accent'
+            : '',
         ].join(' ')}
+        title={jumpable ? `Jump to line ${item.line}` : undefined}
         onClick={jump}
         // role="button" without a key handler is a keyboard trap: focusable,
         // announced as a button, does nothing on Enter.
@@ -70,7 +75,12 @@ export default function CompileStatus({ state, result, onErrorClick }) {
         role={jumpable ? 'button' : undefined}
         tabIndex={jumpable ? 0 : undefined}
       >
-        <span className="shrink-0 font-mono text-xs uppercase tracking-wide opacity-70 pt-0.5">
+        <span
+          className={[
+            'shrink-0 font-mono text-xs uppercase tracking-wide pt-0.5',
+            isError ? 'text-error' : 'text-warn',
+          ].join(' ')}
+        >
           {/* Severity in words, not just colour — this is the accessible
               fallback and it survives colour-blindness and greyscale. */}
           {isError ? 'Error' : 'Warn'}
@@ -79,9 +89,9 @@ export default function CompileStatus({ state, result, onErrorClick }) {
         <div className="min-w-0">
           {/* React escapes these strings. They are derived from user input,
               so they must never go through dangerouslySetInnerHTML. */}
-          <span className="break-words">{item.message}</span>
+          <span className="break-words text-fg-bright">{item.message}</span>
           {item.notes?.length > 0 && (
-            <ul className="mt-0.5 text-xs opacity-70">
+            <ul className="mt-0.5 text-xs text-fg-muted">
               {item.notes.map((note, i) => (
                 <li key={i}>note: {note}</li>
               ))}
@@ -97,18 +107,18 @@ export default function CompileStatus({ state, result, onErrorClick }) {
 
   if (state === 'idle') {
     content = (
-      <p className="px-3 py-2 text-sm text-champagne/50">
+      <p className="px-3 py-2 text-sm text-fg-muted">
         Start typing a rule to check syntax.
       </p>
     );
   } else if (state === 'compiling') {
     content = (
-      <p className="px-3 py-2 text-sm text-champagne/70">Compiling…</p>
+      <p className="px-3 py-2 text-sm text-fg-muted">Compiling…</p>
     );
   } else if (result?.transportError) {
     // Deliberately distinct from a compile failure: the rule may be fine.
     content = (
-      <p className="px-3 py-2 text-sm text-cognac-lit">
+      <p className="px-3 py-2 text-sm text-warn">
         Can&apos;t reach the compiler. Is the backend running?
       </p>
     );
@@ -118,9 +128,9 @@ export default function CompileStatus({ state, result, onErrorClick }) {
     const names = result.ruleNames ?? [];
 
     content = (
-      <div className="divide-y divide-cognac/15">
+      <div className="divide-y divide-line">
         {result.ok && (
-          <p className="px-3 py-2 text-sm text-mint">
+          <p className="px-3 py-2 text-sm text-ok">
             Compiled — {names.length} {names.length === 1 ? 'rule' : 'rules'}
             {names.length > 0 ? `: ${names.join(', ')}` : ''}
           </p>
@@ -145,7 +155,7 @@ export default function CompileStatus({ state, result, onErrorClick }) {
   return (
     // aria-live announces compile results to screen readers as they change.
     <div
-      className="h-full overflow-auto bg-espresso"
+      className="h-full overflow-auto bg-panel text-fg"
       aria-live="polite"
     >
       {content}

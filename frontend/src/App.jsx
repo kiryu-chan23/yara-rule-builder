@@ -38,6 +38,8 @@
 import { useState, useEffect, useRef } from 'react';
 import YaraEditor from './components/RuleEditor';
 import CompileStatus from './components/CompileStatus';
+import Toolbar from './components/Toolbar';
+import CheatsheetDrawer from './components/CheatsheetDrawer';
 import { compileRule } from './api/client';
 
 // Starter template so the user doesn't face a blank page on load
@@ -58,6 +60,7 @@ export default function App() {
   // "compiling" is just "the stored result doesn't match what's on screen".
   // It also means status can never disagree with the result it describes.
   const [result, setResult] = useState(null); // { data, forSource }
+  const [cheatsheetOpen, setCheatsheetOpen] = useState(false);
 
   // Track the active network request so we can cancel it on subsequent edits
   const abortControllerRef = useRef(null);
@@ -136,22 +139,30 @@ export default function App() {
   ];
 
   return (
-    <main className="flex flex-col md:flex-row h-screen w-screen bg-espresso text-blush overflow-hidden font-sans">
+    // relative, because CheatsheetDrawer is absolutely positioned inside it.
+    <main className="relative flex flex-col md:flex-row h-screen w-screen bg-surface text-fg overflow-hidden font-sans">
       {/* Left Column: Code Window */}
-      <section className="flex flex-col flex-1 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-cognac/25">
-        {/* Both headers share min-h so the emerald bands line up across
-            the split, despite one having two lines of text and one having
-            one. justify-center keeps each block vertically centred. */}
-        <header className="flex flex-col justify-center min-h-16 px-4 py-3 bg-emerald border-b border-cognac/25">
-          <h1 className="text-lg font-semibold tracking-tight text-blush">
-            YARA Rule Builder
+      <section className="flex flex-col flex-1 min-w-0 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-line">
+        {/* Both headers share min-h so the bands line up across the split,
+            despite one having two lines of text and one having one.
+            justify-center keeps each block vertically centred. */}
+        <header className="flex flex-col justify-center min-h-16 px-4 py-3 bg-panel border-b border-line">
+          <h1 className="text-lg font-medium tracking-tight text-fg-bright">
+            YARA rule builder
           </h1>
           {/* P2: a cold visitor needs to know what this is and that their
               rule text is the only thing that leaves the browser. */}
-          <p className="text-xs text-champagne/70 mt-0.5">
+          <p className="text-xs text-fg-muted mt-0.5">
             Write a rule, see syntax errors as you type. Nothing is stored.
           </p>
         </header>
+
+        <Toolbar
+          source={source}
+          onLoadTemplate={setSource}
+          onToggleCheatsheet={() => setCheatsheetOpen((v) => !v)}
+          cheatsheetOpen={cheatsheetOpen}
+        />
 
         <div className="flex-1 overflow-auto bg-surface">
           <YaraEditor
@@ -164,10 +175,10 @@ export default function App() {
       </section>
 
       {/* Right Column: Information Panel */}
-      <section className="flex flex-col w-full md:w-96 bg-espresso h-1/2 md:h-full overflow-hidden">
-        <header className="flex flex-col justify-center min-h-16 px-4 py-3 bg-emerald border-b border-cognac/25">
-          <h2 className="text-sm font-semibold tracking-wide text-champagne uppercase">
-            Compiler Output
+      <section className="flex flex-col w-full md:w-96 bg-panel h-1/2 md:h-full overflow-hidden">
+        <header className="flex flex-col justify-center min-h-16 px-4 py-3 bg-panel border-b border-line">
+          <h2 className="text-xs font-medium tracking-widest text-fg-muted uppercase">
+            Problems
           </h2>
         </header>
 
@@ -179,6 +190,11 @@ export default function App() {
           />
         </div>
       </section>
+
+      <CheatsheetDrawer
+        open={cheatsheetOpen}
+        onClose={() => setCheatsheetOpen(false)}
+      />
     </main>
   );
 }
